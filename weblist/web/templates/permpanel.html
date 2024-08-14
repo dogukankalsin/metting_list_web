@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Yetki Paneli{% endblock %}
+{% block header_title %}Yetki Paneli{% endblock %}
+{% block content %}
+<div class="container mx-auto my-8">
+    <table class="table w-full border-collapse border border-gray-300">
+        <thead>
+            <tr>
+                <th>Kullanıcı Adı</th>
+                <th>Yetki</th>
+                <th>İşlemler</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user[1] }}</td>
+                <td>{{ user[2] }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('permpanel.permpanel') }}" class="inline-block">
+                        <input type="hidden" name="user_id" value="{{ user[0] }}">
+                        <select name="new_perm">
+                            <option value="user" {% if user[2] == 'user' %}selected{% endif %}>User</option>
+                            <option value="admin" {% if user[2] == 'admin' %}selected{% endif %}>Admin</option>
+                            <option value="boss" {% if user[2] == 'boss' %}selected{% endif %}>Boss</option>
+                        </select>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Güncelle</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('permpanel.delete_user', user_id=user[0]) }}" class="inline-block">
+                        <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded">Sil</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

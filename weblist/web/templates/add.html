@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+{% block title %}Toplantı Ekle{% endblock %}
+{% block header_title %}Yeni Toplantı Ekle{% endblock %}
+{% block content %}
+
+<div class="container mx-auto px-4 flex">
+    <div class="w-1/2 pr-4">
+        <form id="addMeetingForm" method="POST" action="{{ url_for('add_meeting') }}" class="w-full">
+            <div class="mb-4">
+                <label for="meeting_name" class="block mb-2">Toplantı Adı:</label>
+                <input type="text" id="meeting_name" name="meeting_name" class="w-full px-3 py-2 border rounded-md">
+            </div>
+
+            <div class="mb-4">
+                <label for="location" class="block mb-2">Konum:</label>
+                <select id="location" name="location" class="w-full px-3 py-2 border rounded-md" onchange="showRoomImage(); toggleOtherInput();">
+                    <option value="">Seçiniz</option>
+                    <option value="Toplantı Odası 1">Toplantı Odası 1</option>
+                    <option value="Toplantı Odası 2">Toplantı Odası 2</option>
+                    <option value="Toplantı Odası 3">Toplantı Odası 3</option>
+                    <option value="Toplantı Odası 4">Toplantı Odası 4</option>
+                    <option value="Toplantı Odası 5">Toplantı Odası 5</option>
+                    <option value="Toplantı Odası 6">Toplantı Odası 6</option>
+                    <option value="other">Diğer</option>
+                </select>
+            </div>
+            
+            <div id="otherLocationDiv" class="mb-4 hidden">
+                <label for="otherLocation" class="block mb-2">Diğer Konum:</label>
+                <input type="text" id="otherLocation" name="otherLocation" class="w-full px-3 py-2 border rounded-md">
+            </div>
+            
+            <div class="mb-4">
+                <label for="participants" class="block mb-2">Katılımcılar:</label>
+                <div id="tagContainer" class="flex flex-wrap mb-2"></div>
+                <input type="text" id="participants" name="participants" class="w-full px-3 py-2 border rounded-md" onkeyup="searchEmails()">
+                <ul id="emailList" class="suggestion-list hidden">
+                    <!-- E-posta önerileri buraya eklenecek -->
+                </ul>
+            </div>
+
+            <div class="mb-4">
+                <label for="meeting_date" class="block mb-2">Tarih ve Saat:</label>
+                <input type="datetime-local" id="meeting_date" name="meeting_date" class="w-full px-3 py-2 border rounded-md">
+            </div>
+
+            <div class="mb-4">
+                <label for="description" class="block mb-2">Açıklama:</label>
+                <textarea id="description" name="description" class="w-full px-3 py-2 border rounded-md"></textarea>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <a href="{{ url_for('index') }}" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md">Toplantı Listesine Dön</a>
+                <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-md">Toplantı Ekle</button>
+            </div>
+        </form>
+    </div>
+    <div class="w-1/2 pl-9">
+        <img id="roomImage" src="" 
+            alt="Toplantı Odası" 
+            style="width: 400px; height: 400px; object-fit: cover; margin-left: 200px; border: 8px groove #cccccc;"
+            class="hidden flex">
+    </div>
+</div>
+
+<!-- Modal for validation errors -->
+<div id="errorModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded-md shadow-lg">
+        <h2 class="text-xl font-semibold mb-4">Uyarı</h2>
+        <p id="errorMessage" class="mb-4">Lütfen tüm zorunlu alanları doldurun.</p>
+        <button onclick="closeModal()" class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md">Tamam</button>
+    </div>
+</div>
+
+<script>
+let selectedEmails = [];
+
+function showRoomImage() {
+    var location = document.getElementById('location').value;
+    var roomImage = document.getElementById('roomImage');
+    var otherLocation = document.getElementById('otherLocation').value;
+
+    if (location === 'other') {
+        if (otherLocation) {
+            roomImage.src = "{{ url_for('static', filename='images/default.jpg') }}";
+            roomImage.classList.remove('hidden');
+        } else {
+            roomImage.classList.add('hidden');
+        }
+    } else if (location) {
+        var imageName = location.replace(/ /g, "_").replace(/[ıİ]/g, function(match) {
+            return {
+                'ı': 'i', 'İ': 'I'
+            }[match];
+        });
+        roomImage.src = "{{ url_for('static', filename='images/') }}" + imageName + ".jpg";
+        roomImage.classList.remove('hidden');
+    } else {
+        roomImage.classList.add('hidden');
+    }
+}
+
+function searchEmails() {
+    var query = document.getElementById('participants').value;
+    if (query.length > 1) {  // En az 2 karakter girildiğinde arama yap
+        fetch('/search_emails?q=' + query)
+            .then(response => response.json())
+            .then(data => {
+                var emailList = document.getElementById('emailList');
+                emailList.innerHTML = '';
+                if (data.length > 0) {
+                    emailList.classList.remove('hidden');
+                    
+                    // En uzun e-posta adresini bul
+                    var maxLength = Math.max(...data.map(email => email.length));
+                    emailList.style.width = `${maxLength * 9}px`; // Her karakter için yaklaşık 8px
+
+                    data.forEach(function(email) {
+                        if (!selectedEmails.includes(email)) {
+                            var li = document.createElement('li');
+                            li.textContent = email;
+                            li.classList.add('px-3', 'py-2', 'hover:bg-gray-200', 'cursor-pointer');
+                            li.onclick = function() {
+                                addEmail(email);
+                                document.getElementById('participants').value = '';
+                                emailList.classList.add('hidden');
+                            };
+                            emailList.appendChild(li);
+                        }
+                    });
+                } else {
+                    emailList.classList.add('hidden');
+                }
+            });
+    } else {
+        document.getElementById('emailList').classList.add('hidden');
+    }
+}
+
+function addEmail(email) {
+    if (!selectedEmails.includes(email)) {
+        selectedEmails.push(email);
+        updateTags();
+    }
+}
+
+function removeEmail(email) {
+    selectedEmails = selectedEmails.filter(e => e !== email);
+    updateTags();
+}
+
+function updateTags() {
+    const tagContainer = document.getElementById('tagContainer');
+    tagContainer.innerHTML = '';
+    selectedEmails.forEach(email => {
+        const tag = document.createElement('span');
+        tag.classList.add('bg-blue-100', 'text-blue-800', 'text-xs', 'font-semibold', 'mr-2', 'mb-2', 'px-2.5', 'py-0.5', 'rounded', 'dark:bg-blue-200', 'dark:text-blue-800');
+        tag.innerHTML = `${email} <button onclick="removeEmail('${email}')" class="ml-1 text-red-500">&times;</button>`;
+        tagContainer.appendChild(tag);
+    });
+}
+
+function validateForm() {
+    var meetingName = document.getElementById('meeting_name');
+    var location = document.getElementById('location');
+    var meetingDate = document.getElementById('meeting_date');
+    var description = document.getElementById('description');
+    var otherLocation = document.getElementById('otherLocation');
+    var isValid = true;
+
+    // Tüm alanları temizle
+    document.querySelectorAll('.border-red-500').forEach(function(el) {
+        el.classList.remove('border-red-500');
+    });
+
+    if (!meetingName.value.trim()) {
+        meetingName.classList.add('border-red-500');
+        isValid = false;
+    }
+
+    if (!location.value) {
+        location.classList.add('border-red-500');
+        isValid = false;
+    }
+
+    if (selectedEmails.length === 0) {
+        document.getElementById('participants').classList.add('border-red-500');
+        isValid = false;
+    }
+
+    if (!meetingDate.value) {
+        meetingDate.classList.add('border-red-500');
+        isValid = false;
+    }
+
+    if (!description.value.trim()) {
+        description.classList.add('border-red-500');
+        isValid = false;
+    }
+
+    if (location.value === 'other' && !otherLocation.value.trim()) {
+        otherLocation.classList.add('border-red-500');
+        isValid = false;
+    }
+
+    if (!isValid) {
+        showModal('Lütfen tüm zorunlu alanları doldurun.');
+    }
+
+    return isValid;
+}
+
+function showModal(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorModal').classList.remove('hidden');
+}
+
+function closeModal() {
+    document.getElementById('errorModal').classList.add('hidden');
+}
+
+function toggleOtherInput() {
+    var location = document.getElementById('location');
+    var otherLocationDiv = document.getElementById('otherLocationDiv');
+    if (location.value === 'other') {
+        otherLocationDiv.classList.remove('hidden');
+    } else {
+        otherLocationDiv.classList.add('hidden');
+    }
+}
+
+document.getElementById('addMeetingForm').addEventListener('submit', function(event) {
+    if (!validateForm()) {
+        event.preventDefault(); // Formun gönderilmesini engelle
+    } else {
+        // Seçilen e-postaları gizli bir input alanına ekle
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'participants';
+        hiddenInput.value = selectedEmails.join(',');
+        this.appendChild(hiddenInput);
+    }
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}YTU Teknopark{% endblock %}</title>
+    <style>
+        @import "https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css";
+
+        .bg-ytu-blue {
+            background-color: #003C71;
+        }
+
+        .text-ytu-blue {
+            color: #003C71;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .content {
+            flex: 1;
+        }
+
+        footer {
+            margin-top: auto;
+        }
+
+        .button-container {
+            width: 98%;
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+
+        .button-padding {
+            padding-right: 2rem;
+        }
+        
+        .table-container {
+            width: 100%;
+            overflow: auto; /* Taşan içeriği kontrol et */
+        }
+
+        .table {
+            width: 100%;
+            table-layout: fixed; /* Hücrelerin sabit genişlikte olması için */
+        }
+
+        .table td {
+            overflow: hidden; 
+            text-align: center;
+            padding: 8px;
+            box-shadow: 1px 0 3px rgba(0, 0, 0, 0.4); /* Başlıklara gölge ekleme */
+            text-overflow: ellipsis; /* Taşan metni "..." ile göster */
+            white-space: nowrap; /* Metnin tek satırda kalmasını sağla */
+
+
+        }
+        .table th {
+            
+            padding: 8px;
+        }
+
+                /* Modal CSS */
+        #confirmModal {
+            display: none; /* Başlangıçta gizli */
+        }
+
+        #confirmModal.show {
+            display: flex; /* Modal gösterildiğinde */
+        }
+
+
+        .shadow-lg {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .shadow-xl {
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+            
+        }
+
+        .transition-shadow {
+            transition: box-shadow 0.3s ease-in-out;
+        }
+
+        .nav-link {
+            margin-right: 1rem; /* Boşluğu ayarlamak için margin */
+        }
+        .header-title {
+            border-radius: 8px;
+            width: 15%;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        /* E-posta öneri listesi stili */
+.suggestion-list {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #fff;
+    max-height: 200px; /* Maksimum yükseklik */
+    overflow-y: auto; /* Aşırı uzun liste elemanları için kaydırma */
+    width: auto;
+    position: absolute;
+    z-index: 1000;
+}
+
+/* E-posta öneri elemanları */
+.suggestion-list li {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #ddd;
+}
+
+/* E-posta öneri elemanları üzerine gelindiğinde */
+.suggestion-list li:hover {
+    background-color: #f0f0f0;
+}
+
+/* İlk 5 öneri ile sınırlı olmalı */
+.suggestion-list li:nth-child(n+6) {
+    display: none;
+}
+
+/* List containerının padding ve margin ayarları */
+.suggestion-list-container {
+    position: relative; /* Liste konumunun doğru ayarlanabilmesi için */
+}
+
+input:focus + .suggestion-list {
+    display: block; /* Input alanı focuslandığında listeyi göster */
+}
+
+/* Metin seçme simgesini gizleme */
+.suggestion-list {
+    cursor: pointer; /* Tıklanabilir olarak göster */
+}
+
+
+
+
+        
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <header class="bg-ytu-blue py-4">
+        <div class="container mx-auto flex items-center justify-between">
+            <div class="flex items-center">
+                <img src="{{ url_for('static', filename='images/logopng.png') }}" alt="YTU Teknopark Logo" class="h-12 mr-8">
+                {% if 'user_id' in session %}
+                <a href="{{ url_for('index') }}" class="text-white text-xl px-3 py-2 rounded-full hover:bg-blue-900 hover:shadow-xl transition-shadow nav-link">Ana Sayfa</a>
+                {% endif %}
+                {% if 'user_id' in session and session['user_perm'] == 'boss' %}
+                <a href="{{ url_for('old_meetings') }}" class="text-white text-xl px-3 py-2 rounded-full hover:bg-blue-900 hover:shadow-xl transition-shadow nav-link">Geçmiş Toplantılar</a>
+                {% endif %}
+                {% if 'user_id' in session and session['user_perm'] == 'admin' %}
+                <a href="{{ url_for('old_meetings') }}" class="text-white text-xl px-3 py-2 rounded-full hover:bg-blue-900 hover:shadow-xl transition-shadow nav-link">Geçmiş Toplantılar</a>
+                {% endif %}
+                <nav class="flex items-center justify-content pl-10">
+                    {% if 'user_id' in session and session['user_perm'] == 'boss' %}
+                        <a href="{{ url_for('permpanel.permpanel') }}" class="text-white text-xl px-3 py-2 rounded-full hover:bg-blue-600 hover:shadow-xl transition-shadow nav-link">Yetki Paneli</a>
+                    {% endif %}
+                </nav>
+            </div>
+        
+            {% if 'user_id' in session %}
+                <a href="{{ url_for('auth.logout') }}" class="text-white text-xl px-3 py-2 rounded-full hover:bg-red-700 hover:shadow-xl transition-shadow nav-link">Çıkış Yap</a>
+            {% endif %}
+        </div>
+    </header>
+    <div class="container mx-auto my-8 content">
+        <h1 class="text-ytu-blue text-3xl font-bold header-title mb-2">{% block header_title %}Toplantı Listesi{% endblock %}</h1>
+        {% block content %}{% endblock %}
+    </div>
+    <footer class="bg-ytu-blue py-4 mt-8">
+        <div class="container mx-auto flex items-center justify-center">
+            <img src="{{ url_for('static', filename='images/logopng.png') }}" alt="YTU Teknopark Logo" class="h-12">
+        </div>
+    </footer>
+</body>
+</html>

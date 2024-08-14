@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Geçmiş Toplantılar{% endblock %}
+
+{% block header_title %}Geçmiş Toplantılar{% endblock %}
+
+{% block content %}
+<div class="table-container">
+    <table class="table w-full bg-white shadow-md rounded-md overflow-hidden">
+        <thead>
+            <tr class="bg-gray-200">
+                <th class="px-4 py-3">Toplantı Adı</th>
+                <th class="px-4 py-3">Konum</th>
+                <th class="px-4 py-3">Katılımcılar</th>
+                <th class="px-4 py-3">Tarih</th>
+                <th class="px-4 py-3">Açıklama</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for meeting in meetings %}
+            <tr class="border-b">
+                <td class="px-4 py-3">{{ meeting[1] }}</td>
+                <td class="px-4 py-3">{{ meeting[2] }}</td>
+                <td class="px-4 py-3">{{ meeting[3] }}</td>
+                <td class="px-4 py-3">{{ meeting[4] }}</td>
+                <td class="px-4 py-3">{{ meeting[5] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
